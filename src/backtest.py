@@ -44,6 +44,7 @@ def run_ticker_backtest(
     strategy_name: str = "momentum",
     min_history: int = 60,
     skip_hold_prefilter: bool = False,
+    trade_start: pd.Timestamp | None = None,
 ) -> pd.DataFrame:
     """Walk-forward backtest for a single ticker.
 
@@ -79,6 +80,9 @@ def run_ticker_backtest(
         # Need at least HOLD_DAYS+1 bars after this date for entry + exit
         if i + HOLD_DAYS + 1 >= len(trading_days):
             break
+        # Only generate signals within the requested trading window
+        if trade_start is not None and signal_date < trade_start:
+            continue
 
         entry_idx = i + 1
         exit_idx = i + 1 + HOLD_DAYS
@@ -176,6 +180,7 @@ def run_backtest(
     strategy_name: str = "momentum",
     use_cache: bool = True,
     skip_hold_prefilter: bool = False,
+    min_history: int = 60,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run walk-forward backtest across all tickers.
 
@@ -187,14 +192,24 @@ def run_backtest(
     all_trades = []
     per_ticker: dict[str, Any] = {}
 
+    # Fetch extra warmup history so min_history is satisfied even for short windows.
+    # ~1.5 calendar days per trading day, plus a small buffer.
+    warmup_calendar_days = int(min_history * 1.5) + 30
+    data_start = (
+        pd.Timestamp(start) - pd.Timedelta(days=warmup_calendar_days)
+    ).strftime("%Y-%m-%d")
+
     for ticker in tickers:
         label = f"{strategy_name}" + ("+prefilter" if skip_hold_prefilter else "")
         print(f"  Backtesting {ticker} [{label}] ...")
-        df = fetch_ohlcv(ticker, start, end, use_cache=use_cache)
+        df = fetch_ohlcv(ticker, data_start, end, use_cache=use_cache)
+        # Restrict signal generation to the requested trading window
+        trade_start = pd.Timestamp(start)
         trades = run_ticker_backtest(
             ticker, df,
             strategy_name=strategy_name,
             skip_hold_prefilter=skip_hold_prefilter,
+            trade_start=trade_start,
         )
         metrics = compute_metrics(trades)
         per_ticker[ticker] = metrics
