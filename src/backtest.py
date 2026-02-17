@@ -1,0 +1,198 @@
+"""
+backtest.py - Walk-forward historical backtest.
+
+Trade mapping (deterministic):
+  BUY  → enter at next open, exit at open 5 trading days later  (long)
+  SELL → enter at next open, exit at open 5 trading days later  (short)
+  HOLD → no position opened
+
+No future leakage: features on day T use only data up to T.
+The signal on day T triggers entry at open on day T+1 and exit at open on day T+6.
+
+Outputs per run:
+  - trades DataFrame  : one row per closed trade
+  - metrics dict      : per-ticker and aggregate statistics
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from src.data import fetch_ohlcv
+from src.features import compute_features
+from src.recommend import MomentumStrategy, LLMStrategy, build_evidence_pack
+
+
+HOLD_DAYS = 5  # trading days between entry and exit opens
+
+
+def _get_strategy(strategy_name: str):
+    if strategy_name == "momentum":
+        return MomentumStrategy()
+    elif strategy_name == "llm":
+        return LLMStrategy()
+    else:
+        raise ValueError(f"Unknown strategy: {strategy_name!r}")
+
+
+def run_ticker_backtest(
+    ticker: str,
+    df: pd.DataFrame,
+    strategy_name: str = "momentum",
+    min_history: int = 60,
+) -> pd.DataFrame:
+    """Walk-forward backtest for a single ticker.
+
+    Parameters
+    ----------
+    ticker         : ticker symbol
+    df             : full OHLCV DataFrame
+    strategy_name  : "momentum" or "llm"
+    min_history    : minimum rows before first signal
+
+    Returns
+    -------
+    trades : DataFrame with columns
+        signal_date, entry_date, exit_date, signal, entry_price,
+        exit_price, pnl_pct, ticker, strategy
+    """
+    strategy = _get_strategy(strategy_name)
+    trading_days = df.index.tolist()
+
+    trades = []
+
+    for i, signal_date in enumerate(trading_days):
+        # Need at least min_history bars before this date
+        if i < min_history:
+            continue
+        # Need at least HOLD_DAYS+1 bars after this date for entry + exit
+        if i + HOLD_DAYS + 1 >= len(trading_days):
+            break
+
+        entry_idx = i + 1
+        exit_idx = i + 1 + HOLD_DAYS
+
+        entry_date = trading_days[entry_idx]
+        exit_date = trading_days[exit_idx]
+
+        # Compute features using only history up to signal_date
+        features = compute_features(df, signal_date)
+        evidence = build_evidence_pack(ticker, features)
+
+        rec = strategy.recommend(evidence)
+        signal = rec["signal"]
+
+        if signal == "HOLD":
+            continue
+
+        entry_price = float(df.loc[entry_date, "Open"])
+        exit_price = float(df.loc[exit_date, "Open"])
+
+        if signal == "BUY":
+            pnl_pct = (exit_price - entry_price) / entry_price
+        else:  # SELL / short
+            pnl_pct = (entry_price - exit_price) / entry_price
+
+        trades.append(
+            {
+                "ticker": ticker,
+                "strategy": strategy_name,
+                "signal_date": signal_date.strftime("%Y-%m-%d"),
+                "entry_date": entry_date.strftime("%Y-%m-%d"),
+                "exit_date": exit_date.strftime("%Y-%m-%d"),
+                "signal": signal,
+                "entry_price": round(entry_price, 4),
+                "exit_price": round(exit_price, 4),
+                "pnl_pct": round(pnl_pct, 6),
+            }
+        )
+
+    return pd.DataFrame(trades)
+
+
+def compute_metrics(trades: pd.DataFrame) -> dict[str, Any]:
+    """Aggregate trade-level metrics."""
+    if trades.empty:
+        return {"n_trades": 0}
+
+    pnl = trades["pnl_pct"]
+    winners = pnl[pnl > 0]
+    losers = pnl[pnl <= 0]
+
+    total_return = float((1 + pnl).prod() - 1)
+    avg_trade = float(pnl.mean())
+    win_rate = float(len(winners) / len(pnl))
+    avg_win = float(winners.mean()) if len(winners) else 0.0
+    avg_loss = float(losers.mean()) if len(losers) else 0.0
+    profit_factor = (
+        float(winners.sum() / abs(losers.sum()))
+        if losers.sum() != 0
+        else float("inf")
+    )
+    sharpe = float(pnl.mean() / pnl.std() * np.sqrt(252 / HOLD_DAYS)) if pnl.std() > 0 else 0.0
+    max_drawdown = _max_drawdown(pnl)
+
+    return {
+        "n_trades": int(len(trades)),
+        "n_buy": int((trades["signal"] == "BUY").sum()),
+        "n_sell": int((trades["signal"] == "SELL").sum()),
+        "total_return_pct": round(total_return * 100, 4),
+        "avg_trade_pct": round(avg_trade * 100, 4),
+        "win_rate": round(win_rate, 4),
+        "avg_win_pct": round(avg_win * 100, 4),
+        "avg_loss_pct": round(avg_loss * 100, 4),
+        "profit_factor": round(profit_factor, 4) if profit_factor != float("inf") else None,
+        "sharpe": round(sharpe, 4),
+        "max_drawdown_pct": round(max_drawdown * 100, 4),
+    }
+
+
+def _max_drawdown(pnl: pd.Series) -> float:
+    equity = (1 + pnl).cumprod()
+    peak = equity.cummax()
+    dd = (equity - peak) / peak
+    return float(dd.min())
+
+
+def run_backtest(
+    tickers: list[str],
+    start: str,
+    end: str,
+    strategy_name: str = "momentum",
+    use_cache: bool = True,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Run walk-forward backtest across all tickers.
+
+    Returns
+    -------
+    all_trades : combined trades DataFrame
+    summary    : dict with per-ticker metrics + aggregate
+    """
+    all_trades = []
+    per_ticker: dict[str, Any] = {}
+
+    for ticker in tickers:
+        print(f"  Backtesting {ticker} [{strategy_name}] ...")
+        df = fetch_ohlcv(ticker, start, end, use_cache=use_cache)
+        trades = run_ticker_backtest(ticker, df, strategy_name=strategy_name)
+        metrics = compute_metrics(trades)
+        per_ticker[ticker] = metrics
+        if not trades.empty:
+            all_trades.append(trades)
+
+    combined = pd.concat(all_trades, ignore_index=True) if all_trades else pd.DataFrame()
+    aggregate = compute_metrics(combined)
+
+    summary = {
+        "strategy": strategy_name,
+        "start": start,
+        "end": end,
+        "tickers": tickers,
+        "aggregate": aggregate,
+        "per_ticker": per_ticker,
+    }
+
+    return combined, summary
