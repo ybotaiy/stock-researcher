@@ -1,0 +1,64 @@
+{
+  "strategy": "momentum",
+  "start": "2023-01-01",
+  "end": "2025-12-31",
+  "tickers": [
+    "GOOGL",
+    "TSLA",
+    "GLD"
+  ],
+  "aggregate": {
+    "n_trades": 895,
+    "n_buy": 571,
+    "n_sell": 324,
+    "total_return_pct": 1648.9392,
+    "avg_trade_pct": 0.4723,
+    "win_rate": 0.5218,
+    "avg_win_pct": 4.1463,
+    "avg_loss_pct": -3.5365,
+    "profit_factor": 1.2793,
+    "sharpe": 0.6071,
+    "max_drawdown_pct": -86.6204
+  },
+  "per_ticker": {
+    "GOOGL": {
+      "n_trades": 366,
+      "n_buy": 244,
+      "n_sell": 122,
+      "total_return_pct": -23.5993,
+      "avg_trade_pct": 0.0062,
+      "win_rate": 0.4809,
+      "avg_win_pct": 3.2377,
+      "avg_loss_pct": -2.9873,
+      "profit_factor": 1.004,
+      "sharpe": 0.0109,
+      "max_drawdown_pct": -81.7151
+    },
+    "TSLA": {
+      "n_trades": 315,
+      "n_buy": 169,
+      "n_sell": 146,
+      "total_return_pct": 1591.2641,
+      "avg_trade_pct": 1.2153,
+      "win_rate": 0.5429,
+      "avg_win_pct": 6.6007,
+      "avg_loss_pct": -5.18,
+      "profit_factor": 1.5132,
+      "sharpe": 1.0898,
+      "max_drawdown_pct": -86.6204
+    },
+    "GLD": {
+      "n_trades": 214,
+      "n_buy": 158,
+      "n_sell": 56,
+      "total_return_pct": 35.3525,
+      "avg_trade_pct": 0.1759,
+      "win_rate": 0.5607,
+      "avg_win_pct": 1.9812,
+      "avg_loss_pct": -2.1287,
+      "profit_factor": 1.1882,
+      "sharpe": 0.4756,
+      "max_drawdown_pct": -43.6715
+    }
+  }
+}
