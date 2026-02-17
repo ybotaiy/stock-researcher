@@ -38,6 +38,11 @@ def main():
     parser.add_argument("--strategy", default="momentum", choices=["momentum", "llm"])
     parser.add_argument("--start", default="2023-01-01")
     parser.add_argument("--end", default="2025-12-31")
+    parser.add_argument(
+        "--skip-hold-prefilter",
+        action="store_true",
+        help="Pre-filter with momentum; only call LLM on non-HOLD candidate days.",
+    )
     args = parser.parse_args()
 
     print(f"\nBacktest: {args.strategy.upper()} | {args.start} → {args.end}")
@@ -48,6 +53,7 @@ def main():
         start=args.start,
         end=args.end,
         strategy_name=args.strategy,
+        skip_hold_prefilter=args.skip_hold_prefilter,
     )
 
     run_dir = _make_run_dir(args.start, args.end, args.strategy)

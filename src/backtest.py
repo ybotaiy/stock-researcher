@@ -43,6 +43,7 @@ def run_ticker_backtest(
     df: pd.DataFrame,
     strategy_name: str = "momentum",
     min_history: int = 60,
+    skip_hold_prefilter: bool = False,
 ) -> pd.DataFrame:
     """Walk-forward backtest for a single ticker.
 
@@ -58,8 +59,15 @@ def run_ticker_backtest(
     trades : DataFrame with columns
         signal_date, entry_date, exit_date, signal, entry_price,
         exit_price, pnl_pct, ticker, strategy
+
+    skip_hold_prefilter : bool
+        When True, run MomentumStrategy first and skip the primary strategy
+        call entirely when momentum says HOLD. Useful for reducing LLM API
+        calls (only invoke the LLM on candidate days, not every trading day).
+        Has no effect when strategy_name == "momentum".
     """
     strategy = _get_strategy(strategy_name)
+    prefilter = MomentumStrategy() if skip_hold_prefilter and strategy_name != "momentum" else None
     trading_days = df.index.tolist()
 
     trades = []
@@ -81,6 +89,10 @@ def run_ticker_backtest(
         # Compute features using only history up to signal_date
         features = compute_features(df, signal_date)
         evidence = build_evidence_pack(ticker, features)
+
+        # Optional cheap pre-filter: skip expensive strategy call on HOLD days
+        if prefilter is not None and prefilter.recommend(evidence)["signal"] == "HOLD":
+            continue
 
         rec = strategy.recommend(evidence)
         signal = rec["signal"]
@@ -163,6 +175,7 @@ def run_backtest(
     end: str,
     strategy_name: str = "momentum",
     use_cache: bool = True,
+    skip_hold_prefilter: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run walk-forward backtest across all tickers.
 
@@ -175,9 +188,14 @@ def run_backtest(
     per_ticker: dict[str, Any] = {}
 
     for ticker in tickers:
-        print(f"  Backtesting {ticker} [{strategy_name}] ...")
+        label = f"{strategy_name}" + ("+prefilter" if skip_hold_prefilter else "")
+        print(f"  Backtesting {ticker} [{label}] ...")
         df = fetch_ohlcv(ticker, start, end, use_cache=use_cache)
-        trades = run_ticker_backtest(ticker, df, strategy_name=strategy_name)
+        trades = run_ticker_backtest(
+            ticker, df,
+            strategy_name=strategy_name,
+            skip_hold_prefilter=skip_hold_prefilter,
+        )
         metrics = compute_metrics(trades)
         per_ticker[ticker] = metrics
         if not trades.empty:
