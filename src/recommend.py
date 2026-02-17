@@ -104,7 +104,7 @@ Response schema:
 class LLMStrategy:
     """Uses Claude to reason over evidence_pack fields and emit a signal."""
 
-    def __init__(self, model: str = "claude-haiku-4-5"):
+    def __init__(self, model: str = "claude-sonnet-4-6"):
         self.model = model
         self._client = None  # lazy init
 
