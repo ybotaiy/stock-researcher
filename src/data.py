@@ -23,7 +23,7 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 def _cache_path(ticker: str, start: str, end: str) -> Path:
     d = DATA_DIR / ticker
     d.mkdir(parents=True, exist_ok=True)
-    return d / f"{start}_{end}.parquet"
+    return d / f"{start}_{end}.csv"
 
 
 def fetch_ohlcv(
@@ -42,12 +42,13 @@ def fetch_ohlcv(
     ticker    : e.g. "GOOGL"
     start     : ISO date string, e.g. "2023-01-01"
     end       : ISO date string, e.g. "2025-12-31"
-    use_cache : Load from parquet if available, otherwise download and save.
+    use_cache : Load from CSV if available, otherwise download and save.
     """
     path = _cache_path(ticker, start, end)
 
     if use_cache and path.exists():
-        df = pd.read_parquet(path)
+        df = pd.read_csv(path, index_col=0, parse_dates=True)
+        df.index = pd.to_datetime(df.index).tz_localize(None)
         return df
 
     raw = yf.download(
@@ -75,7 +76,7 @@ def fetch_ohlcv(
     df["Volume"] = df["Volume"].astype("float64")
 
     if use_cache:
-        df.to_parquet(path)
+        df.to_csv(path)
 
     return df
 

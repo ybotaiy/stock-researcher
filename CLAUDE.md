@@ -9,13 +9,13 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 ## Stack
 - Python 3.9 in `.venv/` — always use `.venv/bin/python`
 - `yfinance` for market data, `pandas`/`numpy` for features, `anthropic` SDK for LLM
-- Parquet cache under `data/<TICKER>/` keyed by (start, end)
+- CSV cache under `data/<TICKER>/` keyed by (start, end)
 - Outputs saved to `runs/` with timestamps
 
 ## Module layout
 | File | Role |
 |------|------|
-| `src/data.py` | `fetch_ohlcv(ticker, start, end)` — yfinance + parquet cache |
+| `src/data.py` | `fetch_ohlcv(ticker, start, end)` — yfinance + CSV cache |
 | `src/features.py` | `compute_features(df, as_of)` — returns, vol, MAs, volume ratio |
 | `src/recommend.py` | `MomentumStrategy`, `LLMStrategy`, `build_evidence_pack()` |
 | `src/backtest.py` | `run_backtest()` — walk-forward, warmup window, prefilter support |
@@ -50,7 +50,7 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 
 ## LLM strategy
 - Model: `claude-sonnet-4-6` (set in `LLMStrategy.__init__`)
-- Requires `ANTHROPIC_API_KEY` in environment (stored in `~/.zshenv`)
+- Requires `ANTHROPIC_API_KEY` in environment (stored in `.env`)
 - Use `--skip-hold-prefilter` to cut API calls by ~47% and cost by ~$0.27 on the full 3-year run
 
 ## Backtest results (momentum, 2023-01-01 → 2025-12-31)
