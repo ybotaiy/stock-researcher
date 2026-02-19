@@ -1,0 +1,4 @@
+ticker,date,version,run_type,strategy,start_date,end_date,n_trades,n_buy,n_sell,total_return_pct,avg_trade_pct,win_rate,avg_win_pct,avg_loss_pct,profit_factor,sharpe,max_drawdown_pct
+GOOGL,2025-01-01,34b30b7,backtest,momentum,2025-01-01,2025-12-31,142,96,46,44.9554,0.3618,0.5211,3.6818,-3.2511,1.2324,0.5712,-64.7234
+TSLA,2025-01-01,34b30b7,backtest,momentum,2025-01-01,2025-12-31,105,64,41,246.2131,1.42,0.5333,6.3536,-4.2183,1.7214,1.4552,-69.9418
+GLD,2025-01-01,34b30b7,backtest,momentum,2025-01-01,2025-12-31,107,84,23,27.4491,0.2753,0.5888,2.3251,-2.6597,1.2517,0.6264,-42.2639
