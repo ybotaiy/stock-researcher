@@ -54,6 +54,10 @@ def main():
         action="store_true",
         help="Pre-filter with momentum; only call LLM on non-HOLD candidate days.",
     )
+    parser.add_argument(
+        "--model", default=None,
+        help="LLM model ID (default: claude-haiku-4-5-20251001). Only used with --strategy llm.",
+    )
     args = parser.parse_args()
 
     print(f"\nBacktest: {args.strategy.upper()} | {args.start} → {args.end}")
@@ -65,6 +69,7 @@ def main():
         end=args.end,
         strategy_name=args.strategy,
         skip_hold_prefilter=args.skip_hold_prefilter,
+        model=args.model,
     )
 
     run_dir = _make_run_dir(args.start, args.end, args.strategy)

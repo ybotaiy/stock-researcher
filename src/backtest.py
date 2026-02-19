@@ -29,11 +29,11 @@ from src.recommend import MomentumStrategy, LLMStrategy, build_evidence_pack
 HOLD_DAYS = 5  # trading days between entry and exit opens
 
 
-def _get_strategy(strategy_name: str):
+def _get_strategy(strategy_name: str, model: str | None = None):
     if strategy_name == "momentum":
         return MomentumStrategy()
     elif strategy_name == "llm":
-        return LLMStrategy()
+        return LLMStrategy() if model is None else LLMStrategy(model=model)
     else:
         raise ValueError(f"Unknown strategy: {strategy_name!r}")
 
@@ -45,6 +45,7 @@ def run_ticker_backtest(
     min_history: int = 60,
     skip_hold_prefilter: bool = False,
     trade_start: pd.Timestamp | None = None,
+    model: str | None = None,
 ) -> pd.DataFrame:
     """Walk-forward backtest for a single ticker.
 
@@ -67,7 +68,7 @@ def run_ticker_backtest(
         calls (only invoke the LLM on candidate days, not every trading day).
         Has no effect when strategy_name == "momentum".
     """
-    strategy = _get_strategy(strategy_name)
+    strategy = _get_strategy(strategy_name, model=model)
     prefilter = MomentumStrategy() if skip_hold_prefilter and strategy_name != "momentum" else None
     trading_days = df.index.tolist()
 
@@ -181,6 +182,7 @@ def run_backtest(
     use_cache: bool = True,
     skip_hold_prefilter: bool = False,
     min_history: int = 60,
+    model: str | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run walk-forward backtest across all tickers.
 
@@ -210,6 +212,7 @@ def run_backtest(
             strategy_name=strategy_name,
             skip_hold_prefilter=skip_hold_prefilter,
             trade_start=trade_start,
+            model=model,
         )
         metrics = compute_metrics(trades)
         per_ticker[ticker] = metrics

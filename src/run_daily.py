@@ -54,6 +54,7 @@ def run_daily(
     as_of: str | None = None,
     strategy_name: str = "momentum",
     lookback_days: int = 120,
+    model: str | None = None,
 ) -> Path:
     """Generate evidence packs and recommendations for all tickers.
 
@@ -79,7 +80,7 @@ def run_daily(
     if strategy_name == "momentum":
         strategy = MomentumStrategy()
     elif strategy_name == "llm":
-        strategy = LLMStrategy()
+        strategy = LLMStrategy() if model is None else LLMStrategy(model=model)
     else:
         raise ValueError(f"Unknown strategy: {strategy_name!r}")
 
@@ -126,9 +127,18 @@ def run_daily(
             "strategy": strategy_name,
             "signal": rec["signal"],
             "rationale": rec["rationale"][:200],
+            "model": rec.get("model", ""),
+            "input_tokens": rec.get("input_tokens", 0),
+            "output_tokens": rec.get("output_tokens", 0),
+            "estimated_cost_usd": rec.get("estimated_cost_usd", 0.0),
         })
 
-        print(f"    Signal: {rec['signal']}  |  {rec['rationale'][:80]}")
+        cost_str = (
+            f"  tokens={rec['input_tokens']}in/{rec['output_tokens']}out"
+            f"  cost=${rec['estimated_cost_usd']:.4f}"
+            if rec.get("input_tokens") else ""
+        )
+        print(f"    Signal: {rec['signal']}  |  {rec['rationale'][:80]}{cost_str}")
 
     print(f"\nArtifacts saved to: {run_dir}")
     return run_dir
@@ -138,8 +148,12 @@ def main():
     parser = argparse.ArgumentParser(description="Daily stock research run")
     parser.add_argument("--strategy", default="momentum", choices=["momentum", "llm"])
     parser.add_argument("--date", default=None, help="As-of date YYYY-MM-DD (default: yesterday)")
+    parser.add_argument(
+        "--model", default=None,
+        help="LLM model ID (default: claude-haiku-4-5-20251001). Only used with --strategy llm.",
+    )
     args = parser.parse_args()
-    run_daily(as_of=args.date, strategy_name=args.strategy)
+    run_daily(as_of=args.date, strategy_name=args.strategy, model=args.model)
 
 
 if __name__ == "__main__":

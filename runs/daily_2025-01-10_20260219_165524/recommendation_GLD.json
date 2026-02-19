@@ -1,0 +1,7 @@
+{
+  "ticker": "GLD",
+  "as_of": "2025-01-10",
+  "signal": "HOLD",
+  "rationale": "Mixed signals: 5d return 1.14%, price_to_ma20 1.88%.",
+  "strategy": "momentum"
+}

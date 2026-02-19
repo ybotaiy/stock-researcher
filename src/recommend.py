@@ -87,6 +87,30 @@ class MomentumStrategy:
 # LLM strategy
 # ---------------------------------------------------------------------------
 
+# Pricing in $ per token, keyed by model prefix
+_PRICING_TABLE: dict[str, dict[str, float]] = {
+    "claude-haiku-4-5": {
+        "input":       0.80 / 1_000_000,
+        "output":      4.00 / 1_000_000,
+        "cache_write": 1.00 / 1_000_000,
+        "cache_read":  0.08 / 1_000_000,
+    },
+    "claude-sonnet-4-6": {
+        "input":       3.00 / 1_000_000,
+        "output":     15.00 / 1_000_000,
+        "cache_write": 3.75 / 1_000_000,
+        "cache_read":  0.30 / 1_000_000,
+    },
+}
+_PRICING_DEFAULT = _PRICING_TABLE["claude-sonnet-4-6"]
+
+
+def _pricing_for(model: str) -> dict[str, float]:
+    for prefix, rates in _PRICING_TABLE.items():
+        if model.startswith(prefix):
+            return rates
+    return _PRICING_DEFAULT
+
 _SYSTEM_PROMPT = """You are a quantitative equity analyst.
 You will receive a JSON evidence pack for a single stock and must return a trading signal.
 
@@ -107,7 +131,7 @@ Response schema:
 class LLMStrategy:
     """Uses Claude to reason over evidence_pack fields and emit a signal."""
 
-    def __init__(self, model: str = "claude-sonnet-4-6"):
+    def __init__(self, model: str = "claude-haiku-4-5-20251001"):
         self.model = model
         self._client = None  # lazy init
 
@@ -133,6 +157,21 @@ class LLMStrategy:
 
         raw = message.content[0].text.strip()
 
+        # Token usage + cost
+        usage = message.usage
+        input_tokens = usage.input_tokens
+        output_tokens = usage.output_tokens
+        cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+        cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
+        pricing = _pricing_for(self.model)
+        estimated_cost_usd = round(
+            input_tokens * pricing["input"]
+            + output_tokens * pricing["output"]
+            + cache_write * pricing["cache_write"]
+            + cache_read * pricing["cache_read"],
+            6,
+        )
+
         try:
             parsed = json.loads(raw)
         except json.JSONDecodeError:
@@ -153,6 +192,9 @@ class LLMStrategy:
             "rationale": parsed.get("rationale", ""),
             "strategy": "llm",
             "model": self.model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "estimated_cost_usd": estimated_cost_usd,
         }
 
 
