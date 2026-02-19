@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -21,6 +22,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.backtest import run_backtest
+from src.logging import append_run_record
+
+
+def _git_version() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        return "unknown"
 
 TICKERS = ["GOOGL", "TSLA", "GLD"]
 RUNS_DIR = Path(__file__).parent.parent / "runs"
@@ -78,6 +89,19 @@ def main():
         print(f"\n  {ticker}")
         for k, v in m.items():
             print(f"    {k:<25}: {v}")
+
+    version = _git_version()
+    for ticker, m in summary["per_ticker"].items():
+        append_run_record({
+            "ticker": ticker,
+            "date": args.start,
+            "version": version,
+            "run_type": "backtest",
+            "strategy": args.strategy,
+            "start_date": args.start,
+            "end_date": args.end,
+            **m,
+        })
 
     print(f"\nResults saved to: {run_dir}")
 

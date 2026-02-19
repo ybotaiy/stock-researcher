@@ -17,6 +17,8 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
+import subprocess
+
 import pandas as pd
 
 # Project root on sys.path so `python -m src.run_daily` works
@@ -24,7 +26,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.data import fetch_ohlcv
 from src.features import compute_features
+from src.logging import append_run_record
 from src.recommend import MomentumStrategy, LLMStrategy, build_evidence_pack
+
+
+def _git_version() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        return "unknown"
 
 TICKERS = ["GOOGL", "TSLA", "GLD"]
 RUNS_DIR = Path(__file__).parent.parent / "runs"
@@ -72,6 +84,7 @@ def run_daily(
         raise ValueError(f"Unknown strategy: {strategy_name!r}")
 
     run_dir = _make_run_dir(as_of)
+    version = _git_version()
     print(f"Run directory: {run_dir}")
 
     for ticker in TICKERS:
@@ -104,6 +117,16 @@ def run_daily(
         rec_path = run_dir / f"recommendation_{ticker}.json"
         with open(rec_path, "w") as f:
             json.dump(rec_out, f, indent=2)
+
+        append_run_record({
+            "ticker": ticker,
+            "date": as_of,
+            "version": version,
+            "run_type": "daily",
+            "strategy": strategy_name,
+            "signal": rec["signal"],
+            "rationale": rec["rationale"][:200],
+        })
 
         print(f"    Signal: {rec['signal']}  |  {rec['rationale'][:80]}")
 

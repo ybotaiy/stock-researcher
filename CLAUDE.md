@@ -61,5 +61,8 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 | GLD    | 214    | 56.1%    | 0.48   | 1.19          |
 | **All**| **895**| **52.2%**| **0.61**| **1.28**    |
 
+## Dev workflow
+- After any code change, always run `.venv/bin/python -m pytest tests/ -v`
+
 ## GitHub
 https://github.com/ybotaiy/stock-researcher
