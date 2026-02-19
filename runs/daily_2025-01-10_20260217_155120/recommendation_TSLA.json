@@ -1,7 +1,0 @@
-{
-  "ticker": "TSLA",
-  "as_of": "2025-01-10",
-  "signal": "HOLD",
-  "rationale": "Volatility 74.21% exceeds cap 60%; no trade.",
-  "strategy": "momentum"
-}
