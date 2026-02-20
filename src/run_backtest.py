@@ -58,10 +58,42 @@ def main():
         "--model", default=None,
         help="LLM model ID (default: claude-haiku-4-5-20251001). Only used with --strategy llm.",
     )
+    parser.add_argument(
+        "--critic", action="store_true",
+        help="Run a second LLM critic pass to review and possibly downgrade each recommendation.",
+    )
+    parser.add_argument(
+        "--critic-model", default=None,
+        help="Claude model ID for the critic (default: claude-haiku-4-5-20251001).",
+    )
+    parser.add_argument(
+        "--rec-cache", default=None,
+        help=(
+            "Path to a JSON file of cached primary-strategy recommendations "
+            "(keyed by 'ticker/date'). If the file exists it is loaded before "
+            "the run; the updated cache is always written to rec_cache.json in "
+            "the run directory and also back to this path when provided. "
+            "Pass a cache from a prior LLM run to skip re-calling the primary "
+            "LLM when adding --critic on a second pass."
+        ),
+    )
     args = parser.parse_args()
 
     print(f"\nBacktest: {args.strategy.upper()} | {args.start} → {args.end}")
+    if args.critic:
+        print(f"  Critic: enabled (model={args.critic_model or 'claude-haiku-4-5-20251001'})")
     print("=" * 60)
+
+    # Load recommendation cache for LLM runs (enables critic-only reruns).
+    rec_cache: dict | None = None
+    if args.strategy == "llm":
+        rec_cache = {}
+        if args.rec_cache:
+            cache_path = Path(args.rec_cache)
+            if cache_path.exists():
+                with open(cache_path) as f:
+                    rec_cache = json.load(f)
+                print(f"  Loaded {len(rec_cache)} cached recommendations from {cache_path}")
 
     trades, summary = run_backtest(
         tickers=TICKERS,
@@ -70,6 +102,9 @@ def main():
         strategy_name=args.strategy,
         skip_hold_prefilter=args.skip_hold_prefilter,
         model=args.model,
+        critic=args.critic,
+        critic_model=args.critic_model,
+        rec_cache=rec_cache,
     )
 
     run_dir = _make_run_dir(args.start, args.end, args.strategy)
@@ -83,6 +118,16 @@ def main():
     with open(metrics_path, "w") as f:
         json.dump(summary, f, indent=2)
 
+    # Persist recommendation cache for LLM runs so future critic reruns can
+    # skip the primary LLM calls.
+    if rec_cache is not None:
+        cache_out = run_dir / "rec_cache.json"
+        with open(cache_out, "w") as f:
+            json.dump(rec_cache, f, indent=2)
+        if args.rec_cache and Path(args.rec_cache) != cache_out:
+            with open(args.rec_cache, "w") as f:
+                json.dump(rec_cache, f, indent=2)
+
     # Print summary
     print("\n=== AGGREGATE METRICS ===")
     agg = summary["aggregate"]
@@ -94,10 +139,15 @@ def main():
         print(f"\n  {ticker}")
         for k, v in m.items():
             print(f"    {k:<25}: {v}")
+        if args.critic and not trades.empty and "critic_agree" in trades.columns:
+            t = trades[trades["ticker"] == ticker]
+            if not t.empty:
+                agree_rate = t["critic_agree"].mean()
+                print(f"    {'critic_agree_rate':<25}: {agree_rate:.2%}")
 
     version = _git_version()
     for ticker, m in summary["per_ticker"].items():
-        append_run_record({
+        record: dict = {
             "ticker": ticker,
             "date": args.start,
             "version": version,
@@ -106,7 +156,12 @@ def main():
             "start_date": args.start,
             "end_date": args.end,
             **m,
-        })
+        }
+        if args.critic and not trades.empty and "critic_agree" in trades.columns:
+            t = trades[trades["ticker"] == ticker]
+            if not t.empty:
+                record["critic_agree_rate"] = round(float(t["critic_agree"].mean()), 4)
+        append_run_record(record)
 
     print(f"\nResults saved to: {run_dir}")
 

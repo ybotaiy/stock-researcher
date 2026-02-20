@@ -18,6 +18,7 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 | `src/data.py` | `fetch_ohlcv(ticker, start, end)` — yfinance + CSV cache |
 | `src/features.py` | `compute_features(df, as_of)` — returns, vol, MAs, volume ratio |
 | `src/recommend.py` | `MomentumStrategy`, `LLMStrategy`, `build_evidence_pack()` |
+| `src/critic.py` | `critique_recommendation()` — second LLM pass to review and possibly downgrade a signal |
 | `src/backtest.py` | `run_backtest()` — walk-forward, warmup window, prefilter support |
 | `src/run_daily.py` | Daily artifact generator (evidence_pack + recommendation JSON) |
 | `src/run_backtest.py` | CLI backtest runner |
@@ -36,11 +37,20 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 # Daily run (LLM)
 .venv/bin/python -m src.run_daily --date 2025-01-10 --strategy llm
 
+# Daily run with critic (momentum + LLM critic review)
+.venv/bin/python -m src.run_daily --date 2025-01-10 --strategy momentum --critic
+
+# Daily run with critic using a specific critic model
+.venv/bin/python -m src.run_daily --date 2025-01-10 --strategy momentum --critic --critic-model claude-haiku-4-5-20251001
+
 # Backtest — momentum, full range
 .venv/bin/python -m src.run_backtest --strategy momentum --start 2023-01-01 --end 2025-12-31
 
 # Backtest — LLM with momentum prefilter (~47% fewer API calls)
 .venv/bin/python -m src.run_backtest --strategy llm --skip-hold-prefilter --start 2025-10-01 --end 2025-12-31
+
+# Backtest — with critic enabled
+.venv/bin/python -m src.run_backtest --strategy momentum --critic --start 2025-01-01 --end 2025-03-31
 ```
 
 ## Momentum strategy rules
@@ -52,6 +62,14 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 - Model: `claude-sonnet-4-6` (set in `LLMStrategy.__init__`)
 - Requires `ANTHROPIC_API_KEY` in environment (stored in `.env`)
 - Use `--skip-hold-prefilter` to cut API calls by ~47% and cost by ~$0.27 on the full 3-year run
+
+## LLM critic (opt-in)
+- Enabled via `--critic` flag on both `run_daily` and `run_backtest`
+- Runs a second LLM call (`critique_recommendation()` in `src/critic.py`) after the primary signal
+- Critic may downgrade signal to HOLD or reduce confidence; it never increases confidence
+- Default critic model: `claude-haiku-4-5-20251001` (override with `--critic-model`)
+- Artifacts: `critic_<TICKER>.json` saved alongside recommendation JSON in the run directory
+- Log columns added when critic is enabled: `critic_agree`, `confidence_before`, `confidence_after`, `stance_before`, `stance_after`, `critic_input_tokens`, `critic_output_tokens`, `critic_estimated_cost_usd`
 
 ## Backtest results (momentum, 2023-01-01 → 2025-12-31)
 | Ticker | Trades | Win rate | Sharpe | Profit factor |

@@ -21,6 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from src.critic import critique_recommendation
 from src.data import fetch_ohlcv
 from src.features import compute_features
 from src.recommend import MomentumStrategy, LLMStrategy, build_evidence_pack
@@ -46,6 +47,9 @@ def run_ticker_backtest(
     skip_hold_prefilter: bool = False,
     trade_start: pd.Timestamp | None = None,
     model: str | None = None,
+    critic: bool = False,
+    critic_model: str | None = None,
+    rec_cache: dict | None = None,
 ) -> pd.DataFrame:
     """Walk-forward backtest for a single ticker.
 
@@ -67,6 +71,13 @@ def run_ticker_backtest(
         call entirely when momentum says HOLD. Useful for reducing LLM API
         calls (only invoke the LLM on candidate days, not every trading day).
         Has no effect when strategy_name == "momentum".
+    rec_cache : dict, optional
+        Shared mutable dict used to cache primary strategy recommendations,
+        keyed by ``"<ticker>/<signal_date>"``.  On a cache hit the dict
+        value is used directly and the strategy is not called.  On a miss
+        the strategy is called and the result is stored for future lookups.
+        Pass the same dict across multiple ``run_ticker_backtest`` calls (or
+        to ``run_backtest``) to amortise repeated LLM calls across tickers.
     """
     strategy = _get_strategy(strategy_name, model=model)
     prefilter = MomentumStrategy() if skip_hold_prefilter and strategy_name != "momentum" else None
@@ -99,8 +110,31 @@ def run_ticker_backtest(
         if prefilter is not None and prefilter.recommend(evidence)["signal"] == "HOLD":
             continue
 
-        rec = strategy.recommend(evidence)
+        cache_key = f"{ticker}/{signal_date.strftime('%Y-%m-%d')}"
+        if rec_cache is not None and cache_key in rec_cache:
+            rec = rec_cache[cache_key]
+        else:
+            rec = strategy.recommend(evidence)
+            if rec_cache is not None:
+                rec_cache[cache_key] = rec
         signal = rec["signal"]
+
+        # Optional critic pass
+        critic_fields: dict = {}
+        if critic:
+            critic_out = critique_recommendation(
+                evidence, rec,
+                model=critic_model,
+                client=getattr(strategy, "_client", None),
+            )
+            signal = critic_out["stance_after"]
+            critic_fields = {
+                "critic_agree": critic_out["critic_agree"],
+                "confidence_before": critic_out["confidence_before"],
+                "confidence_after": critic_out["confidence_after"],
+                "stance_before": critic_out["stance_before"],
+                "stance_after": critic_out["stance_after"],
+            }
 
         if signal == "HOLD":
             continue
@@ -124,6 +158,7 @@ def run_ticker_backtest(
                 "entry_price": round(entry_price, 4),
                 "exit_price": round(exit_price, 4),
                 "pnl_pct": round(pnl_pct, 6),
+                **critic_fields,
             }
         )
 
@@ -183,6 +218,9 @@ def run_backtest(
     skip_hold_prefilter: bool = False,
     min_history: int = 60,
     model: str | None = None,
+    critic: bool = False,
+    critic_model: str | None = None,
+    rec_cache: dict | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run walk-forward backtest across all tickers.
 
@@ -213,6 +251,9 @@ def run_backtest(
             skip_hold_prefilter=skip_hold_prefilter,
             trade_start=trade_start,
             model=model,
+            critic=critic,
+            critic_model=critic_model,
+            rec_cache=rec_cache,
         )
         metrics = compute_metrics(trades)
         per_ticker[ticker] = metrics

@@ -24,6 +24,7 @@ import pandas as pd
 # Project root on sys.path so `python -m src.run_daily` works
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from src.critic import critique_recommendation
 from src.data import fetch_ohlcv
 from src.features import compute_features
 from src.logging import append_run_record
@@ -55,6 +56,9 @@ def run_daily(
     strategy_name: str = "momentum",
     lookback_days: int = 120,
     model: str | None = None,
+    critic: bool = False,
+    critic_model: str | None = None,
+    rec_dir: str | Path | None = None,
 ) -> Path:
     """Generate evidence packs and recommendations for all tickers.
 
@@ -63,6 +67,12 @@ def run_daily(
     as_of         : ISO date string (defaults to yesterday)
     strategy_name : "momentum" or "llm"
     lookback_days : calendar days of history to fetch
+    critic        : if True, run a second LLM critic pass on each recommendation
+    critic_model  : Claude model ID for the critic (defaults to haiku)
+    rec_dir       : path to an existing daily run directory whose
+                    ``recommendation_<TICKER>.json`` files are loaded as the
+                    primary recommendation, skipping the strategy call.
+                    Tickers without a cached file fall back to the strategy.
 
     Returns
     -------
@@ -107,8 +117,35 @@ def run_daily(
         with open(ep_path, "w") as f:
             json.dump(evidence, f, indent=2)
 
-        # Generate recommendation
-        rec = strategy.recommend(evidence)
+        # Generate recommendation (or load from cache).
+        cached_rec_path = (
+            Path(rec_dir) / f"recommendation_{ticker}.json"
+            if rec_dir is not None else None
+        )
+        if cached_rec_path is not None and cached_rec_path.exists():
+            with open(cached_rec_path) as _f:
+                _raw = json.load(_f)
+            # Strip envelope fields added by run_daily; keep the rec payload.
+            rec = {k: v for k, v in _raw.items() if k not in ("ticker", "as_of")}
+            print(f"    Using cached recommendation from {cached_rec_path}")
+        else:
+            rec = strategy.recommend(evidence)
+
+        # Optional critic pass
+        critic_out: dict | None = None
+        if critic:
+            critic_out = critique_recommendation(
+                evidence, rec,
+                model=critic_model,
+                client=getattr(strategy, "_client", None),
+            )
+            rec["signal"] = critic_out["stance_after"]
+            rec["confidence"] = critic_out["confidence_after"]
+
+            critic_path = run_dir / f"critic_{ticker}.json"
+            with open(critic_path, "w") as f:
+                json.dump({"ticker": ticker, "as_of": as_of, **critic_out}, f, indent=2)
+
         rec_out = {
             "ticker": ticker,
             "as_of": as_of,
@@ -119,7 +156,7 @@ def run_daily(
         with open(rec_path, "w") as f:
             json.dump(rec_out, f, indent=2)
 
-        append_run_record({
+        log_record: dict = {
             "ticker": ticker,
             "date": as_of,
             "version": version,
@@ -131,14 +168,31 @@ def run_daily(
             "input_tokens": rec.get("input_tokens", 0),
             "output_tokens": rec.get("output_tokens", 0),
             "estimated_cost_usd": rec.get("estimated_cost_usd", 0.0),
-        })
+        }
+        if critic_out is not None:
+            log_record.update({
+                "critic_agree": critic_out["critic_agree"],
+                "confidence_before": critic_out["confidence_before"],
+                "confidence_after": critic_out["confidence_after"],
+                "stance_before": critic_out["stance_before"],
+                "stance_after": critic_out["stance_after"],
+                "critic_input_tokens": critic_out["critic_input_tokens"],
+                "critic_output_tokens": critic_out["critic_output_tokens"],
+                "critic_estimated_cost_usd": critic_out["critic_estimated_cost_usd"],
+            })
+        append_run_record(log_record)
 
         cost_str = (
             f"  tokens={rec['input_tokens']}in/{rec['output_tokens']}out"
             f"  cost=${rec['estimated_cost_usd']:.4f}"
             if rec.get("input_tokens") else ""
         )
-        print(f"    Signal: {rec['signal']}  |  {rec['rationale'][:80]}{cost_str}")
+        critic_str = (
+            f"  critic={'agree' if critic_out['critic_agree'] else 'DISAGREE'}"
+            f" → {critic_out['stance_after']}"
+            if critic_out is not None else ""
+        )
+        print(f"    Signal: {rec['signal']}  |  {rec['rationale'][:80]}{cost_str}{critic_str}")
 
     print(f"\nArtifacts saved to: {run_dir}")
     return run_dir
@@ -152,8 +206,33 @@ def main():
         "--model", default=None,
         help="LLM model ID (default: claude-haiku-4-5-20251001). Only used with --strategy llm.",
     )
+    parser.add_argument(
+        "--critic", action="store_true",
+        help="Run a second LLM critic pass to review and possibly downgrade the recommendation.",
+    )
+    parser.add_argument(
+        "--critic-model", default=None,
+        help="Claude model ID for the critic (default: claude-haiku-4-5-20251001).",
+    )
+    parser.add_argument(
+        "--rec-dir", default=None,
+        help=(
+            "Path to an existing daily run directory. "
+            "recommendation_<TICKER>.json files found there are used as the "
+            "primary recommendation, skipping the strategy call. "
+            "Useful for running --critic against a previously generated "
+            "recommendation without re-calling the primary LLM."
+        ),
+    )
     args = parser.parse_args()
-    run_daily(as_of=args.date, strategy_name=args.strategy, model=args.model)
+    run_daily(
+        as_of=args.date,
+        strategy_name=args.strategy,
+        model=args.model,
+        critic=args.critic,
+        critic_model=args.critic_model,
+        rec_dir=args.rec_dir,
+    )
 
 
 if __name__ == "__main__":

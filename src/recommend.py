@@ -50,6 +50,7 @@ class MomentumStrategy:
         if ret5 is None or p2ma20 is None:
             return {
                 "signal": "HOLD",
+                "confidence": 0.5,
                 "rationale": "Insufficient history for signal.",
                 "strategy": "momentum",
             }
@@ -58,6 +59,7 @@ class MomentumStrategy:
         if vol is not None and vol > self.vol_cap:
             return {
                 "signal": "HOLD",
+                "confidence": 0.5,
                 "rationale": f"Volatility {vol:.2%} exceeds cap {self.vol_cap:.0%}; no trade.",
                 "strategy": "momentum",
             }
@@ -80,7 +82,8 @@ class MomentumStrategy:
                 f"Mixed signals: 5d return {ret5:.2%}, price_to_ma20 {p2ma20:.2%}."
             )
 
-        return {"signal": signal, "rationale": rationale, "strategy": "momentum"}
+        confidence = 0.7 if signal in ("BUY", "SELL") else 0.5
+        return {"signal": signal, "confidence": confidence, "rationale": rationale, "strategy": "momentum"}
 
 
 # ---------------------------------------------------------------------------
@@ -118,11 +121,13 @@ Rules:
 - Use ONLY the fields provided in the evidence pack; do not reference external knowledge.
 - Signal must be exactly one of: BUY, SELL, HOLD.
 - Provide a concise rationale (1-3 sentences) citing specific field values.
+- confidence is a float between 0.0 and 1.0 reflecting your conviction.
 - Respond with valid JSON only, no markdown fences.
 
 Response schema:
 {
   "signal": "BUY" | "SELL" | "HOLD",
+  "confidence": 0.0-1.0,
   "rationale": "..."
 }
 """
@@ -187,8 +192,15 @@ class LLMStrategy:
         if signal not in SIGNAL_CHOICES:
             signal = "HOLD"
 
+        try:
+            confidence = float(parsed.get("confidence", 0.5))
+            confidence = max(0.0, min(1.0, confidence))
+        except (TypeError, ValueError):
+            confidence = 0.5
+
         return {
             "signal": signal,
+            "confidence": confidence,
             "rationale": parsed.get("rationale", ""),
             "strategy": "llm",
             "model": self.model,
