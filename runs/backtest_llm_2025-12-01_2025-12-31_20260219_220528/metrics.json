@@ -1,0 +1,44 @@
+{
+  "strategy": "llm",
+  "start": "2025-12-01",
+  "end": "2025-12-31",
+  "tickers": [
+    "GOOGL",
+    "TSLA",
+    "GLD"
+  ],
+  "aggregate": {
+    "n_trades": 4,
+    "n_buy": 4,
+    "n_sell": 0,
+    "total_return_pct": 9.8761,
+    "avg_trade_pct": 2.4029,
+    "win_rate": 0.75,
+    "avg_win_pct": 3.4824,
+    "avg_loss_pct": -0.8358,
+    "profit_factor": 12.4998,
+    "sharpe": 7.2674,
+    "max_drawdown_pct": 0.0
+  },
+  "per_ticker": {
+    "GOOGL": {
+      "n_trades": 0
+    },
+    "TSLA": {
+      "n_trades": 0
+    },
+    "GLD": {
+      "n_trades": 4,
+      "n_buy": 4,
+      "n_sell": 0,
+      "total_return_pct": 9.8761,
+      "avg_trade_pct": 2.4029,
+      "win_rate": 0.75,
+      "avg_win_pct": 3.4824,
+      "avg_loss_pct": -0.8358,
+      "profit_factor": 12.4998,
+      "sharpe": 7.2674,
+      "max_drawdown_pct": 0.0
+    }
+  }
+}

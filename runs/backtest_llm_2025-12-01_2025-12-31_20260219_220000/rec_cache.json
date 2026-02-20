@@ -1,0 +1,212 @@
+{
+  "GOOGL/2025-12-01": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"GOOGL is trading 7.1% above its 20-day MA and 17.0% above its 50-day MA, indicating positive momentum with a solid 11.98% 20-day return. The 5-day return of 5.08% confirms recent strength despite a minor 1-day pullback of -1.65%, whi",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 349,
+    "output_tokens": 132,
+    "estimated_cost_usd": 0.000807
+  },
+  "GOOGL/2025-12-16": {
+    "signal": "HOLD",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"HOLD\",\n  \"confidence\": 0.62,\n  \"rationale\": \"GOOGL is trading slightly below its 20-day MA (price_to_ma20: -1.46%) but above its 50-day MA with positive 20-day momentum (+7.63%). However, recent weakness (-3.31% over 5 days) and elevated volatility (32.85%) combined with below",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 139,
+    "estimated_cost_usd": 0.000834
+  },
+  "GOOGL/2025-12-17": {
+    "signal": "HOLD",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"HOLD\",\n  \"confidence\": 0.62,\n  \"rationale\": \"GOOGL is trading below its 20-day MA (296.72 vs 311.75, -4.8%) following recent 5-day weakness (-7.3%), but maintains support above the 50-day MA (+4.1%) with positive 20-day momentum (+4.4%). The elevated 20-day volatility (35.3%) ",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 148,
+    "estimated_cost_usd": 0.00087
+  },
+  "GOOGL/2025-12-18": {
+    "signal": "HOLD",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"HOLD\",\n  \"confidence\": 0.62,\n  \"rationale\": \"GOOGL is trading 3.1% below its 20-day MA (302.46 vs 312.25) despite positive 20-day returns of 3.36%, suggesting recent weakness after a rally. The 5-day return of -3.19% indicates short-term momentum loss, though the price remains",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 151,
+    "estimated_cost_usd": 0.000882
+  },
+  "TSLA/2025-12-01": {
+    "signal": "HOLD",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"HOLD\",\n  \"confidence\": 0.65,\n  \"rationale\": \"TSLA shows mixed signals: positive 5-day momentum (+9.98%) but negative 20-day returns (-5.79%) with elevated volatility (51.48%). Price trades above MA20 (+1.25%) but below MA50 (-0.90%), indicating near-term strength offset by int",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 129,
+    "estimated_cost_usd": 0.000794
+  },
+  "TSLA/2025-12-02": {
+    "signal": "HOLD",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"HOLD\",\n  \"confidence\": 0.65,\n  \"rationale\": \"TSLA is trading slightly above its 20-day MA (price_to_ma20: +1.51%) but below its 50-day MA (price_to_ma50: -1.08%), suggesting mixed momentum. The 20-day volatility of 50.37% is elevated, and while the 5-day return is positive (+2",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 161,
+    "estimated_cost_usd": 0.000922
+  },
+  "TSLA/2025-12-03": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading above both its 20-day MA (446.74 vs 422.99) and 50-day MA (446.74 vs 434.35), with positive momentum across 1-day (+4.08%) and 5-day (+6.52%) returns. Volume ratio of 1.047 shows slight buying support, though elevated",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 346,
+    "output_tokens": 133,
+    "estimated_cost_usd": 0.000809
+  },
+  "TSLA/2025-12-04": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading 7.55% above its 20-day moving average (454.53 vs 422.61) and 4.59% above its 50-day moving average, indicating upward momentum. The 5-day return of 6.55% is positive and outpaces the negative 20-day return of -1.63%, ",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 346,
+    "output_tokens": 163,
+    "estimated_cost_usd": 0.000929
+  },
+  "TSLA/2025-12-05": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA trades above both 20-day MA (455.0 vs 423.07, +7.5%) and 50-day MA (455.0 vs 435.22, +4.5%), with strong 5-day momentum (+5.77%) supporting upside. However, elevated 20-day volatility (45.7%) and below-average volume (0.68 ratio",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 138,
+    "estimated_cost_usd": 0.00083
+  },
+  "TSLA/2025-12-08": {
+    "signal": "HOLD",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"HOLD\",\n  \"confidence\": 0.62,\n  \"rationale\": \"TSLA is trading above both its 20-day MA (439.58 vs 423.57) and 50-day MA (435.20), showing positive price momentum with +2.34% return over 20 days. However, the -3.39% single-day decline, elevated 20-day volatility of 45.4%, and be",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 164,
+    "estimated_cost_usd": 0.000934
+  },
+  "TSLA/2025-12-09": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading above both its 20-day MA (445.17 vs 423.57, +5.1%) and 50-day MA (445.17 vs 435.24, +2.3%), with positive momentum over 1-day (+1.27%) and 5-day (+3.71%) periods. The 20-day price-to-MA ratio of 5.1% indicates moderat",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 152,
+    "estimated_cost_usd": 0.000886
+  },
+  "TSLA/2025-12-15": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading 10.2% above its 20-day MA (431.37) and 8.9% above its 50-day MA (436.49), indicating sustained upward momentum. Strong positive returns over 1d (3.6%), 5d (8.1%), and 20d (17.5%) combined with elevated volume ratio (1",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 143,
+    "estimated_cost_usd": 0.00085
+  },
+  "TSLA/2025-12-16": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading significantly above both its 20-day and 50-day moving averages (12.5% and 12.0% respectively), demonstrating strong upward momentum with positive returns across all timeframes (1d: +3.1%, 5d: +10.0%, 20d: +19.8%). Abo",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 141,
+    "estimated_cost_usd": 0.000842
+  },
+  "TSLA/2025-12-17": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading 6.5% above its 20-day MA (438.72) with positive 5-day (3.5%) and strong 20-day (16.5%) returns, indicating upward momentum. The 1.38x volume ratio suggests conviction behind recent gains, though elevated 20-day volati",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 124,
+    "estimated_cost_usd": 0.000774
+  },
+  "TSLA/2025-12-18": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading 9.2% above its 20-day MA and 10.2% above its 50-day MA, with positive momentum across all timeframes (1d: +3.4%, 5d: +8.2%, 20d: +19.6%). Volume ratio of 1.21x supports the uptrend, though elevated 20-day volatility (",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 348,
+    "output_tokens": 135,
+    "estimated_cost_usd": 0.000818
+  },
+  "TSLA/2025-12-19": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"TSLA is trading 7.65% above its 20-day MA and 9.43% above its 50-day MA, with strong 20-day returns of 21.75% and positive 5-day momentum at 4.85%. The elevated volume ratio of 1.30 confirms buying interest, though the 41% 20-day vol",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 134,
+    "estimated_cost_usd": 0.000814
+  },
+  "GLD/2025-12-01": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"GLD is trading above both its 20-day MA (376.31) and 50-day MA (370.89) with a 3.57% premium to MA20, indicating sustained upward momentum. Positive returns across 5-day (+4.14%) and 20-day (+5.88%) periods confirm strength, though e",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 346,
+    "output_tokens": 129,
+    "estimated_cost_usd": 0.000793
+  },
+  "GLD/2025-12-12": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"GLD is trading above both its 20-day MA (383.27) and 50-day MA (377.96) with positive momentum across all timeframes (1d: +0.56%, 5d: +2.33%, 20d: +3.28%). Volume ratio of 1.67x indicates strong buying interest, supporting the uptren",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 120,
+    "estimated_cost_usd": 0.000758
+  },
+  "GLD/2025-12-15": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"GLD is trading above both its 20-day MA (384.26) and 50-day MA (378.72) with positive momentum across all timeframes (1d: +0.09%, 5d: +2.69%, 20d: +5.28%). The price is 3.0% above the 20-day moving average and volume ratio of 1.13x i",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 143,
+    "estimated_cost_usd": 0.00085
+  },
+  "GLD/2025-12-16": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"GLD is trading above both its 20-day MA (385.47) and 50-day MA (379.35) with positive momentum across all measured periods (1d: +0.023%, 5d: +2.19%, 20d: +6.52%). The price is 2.7% above the 20-day MA, indicating sustained uptrend, t",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 139,
+    "estimated_cost_usd": 0.000834
+  },
+  "GLD/2025-12-17": {
+    "signal": "BUY",
+    "confidence": 0.5,
+    "rationale": "```json\n{\n  \"signal\": \"BUY\",\n  \"confidence\": 0.72,\n  \"rationale\": \"GLD is trading 3.25% above its 20-day MA and 5.07% above its 50-day MA, indicating upward momentum. The stock shows positive returns across 1d (0.86%), 5d (2.63%), and 20d (6.66%), with volume ratio of 1.08 suggesting above-average t",
+    "strategy": "llm",
+    "model": "claude-haiku-4-5-20251001",
+    "input_tokens": 347,
+    "output_tokens": 123,
+    "estimated_cost_usd": 0.00077
+  }
+}
