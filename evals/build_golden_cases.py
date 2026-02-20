@@ -122,6 +122,7 @@ def build_cases(ticker: str, strategy: MomentumStrategy) -> list[dict]:
                 "date": ts.strftime("%Y-%m-%d"),
                 "evidence_pack": evidence,
                 "momentum_signal": rec["signal"],
+                "momentum_confidence": rec["confidence"],
                 "momentum_rationale": rec["rationale"],
                 "forward_return_5d": fwd_ret,
                 "oracle_signal": oracle,

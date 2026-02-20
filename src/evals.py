@@ -194,6 +194,30 @@ def signal_matches_rationale(case: dict, rec: dict) -> GradeResult:
     }
 
 
+def confidence_calibrated(case: dict, rec: dict) -> GradeResult:
+    """High-confidence predictions should agree with the oracle more often.
+
+    Fails when confidence >= 0.7 AND the signal disagrees with oracle.
+    HOLD signals or missing oracle are always a pass (nothing to validate).
+    """
+    signal = rec.get("signal", "HOLD")
+    confidence = rec.get("confidence", 0.5)
+    oracle = case.get("oracle_signal")
+
+    if signal == "HOLD" or oracle is None:
+        return {"name": "confidence_calibrated", "passed": True,
+                "detail": "HOLD or no oracle", "confidence": confidence}
+
+    agrees = signal == oracle
+    passed = not (confidence >= 0.7 and not agrees)
+    return {
+        "name": "confidence_calibrated",
+        "passed": passed,
+        "detail": f"conf={confidence:.2f} oracle={oracle} signal={signal}",
+        "confidence": confidence,
+    }
+
+
 ALL_GRADERS: list[Grader] = [
     signal_valid,
     agrees_with_momentum,
@@ -203,15 +227,17 @@ ALL_GRADERS: list[Grader] = [
     rationale_cites_evidence,
     out_of_range,
     signal_matches_rationale,
+    confidence_calibrated,
 ]
 
 # ── scorecard ─────────────────────────────────────────────────────────────────
 
 _BUCKET_GRADER = {
-    "schema_fail":      "signal_valid",
-    "out_of_range":     "out_of_range",
-    "ungrounded_claim": "rationale_cites_evidence",
-    "logic_conflict":   "signal_matches_rationale",
+    "schema_fail":        "signal_valid",
+    "out_of_range":       "out_of_range",
+    "ungrounded_claim":   "rationale_cites_evidence",
+    "logic_conflict":     "signal_matches_rationale",
+    "overconfident_miss": "confidence_calibrated",
 }
 
 
@@ -290,6 +316,7 @@ def run_evals(
                 "momentum_signal": case["momentum_signal"],
                 "oracle_signal": case.get("oracle_signal"),
                 "rec_signal": rec.get("signal", ""),
+                "rec_confidence": rec.get("confidence", 0.5),
                 "grades": grades,
             }
         )
@@ -344,6 +371,32 @@ def _build_report(
                 matrix[ref][rec] += 1
         return matrix
 
+    # Confidence calibration analysis: compare oracle agreement rate
+    # for high-confidence vs low-confidence non-HOLD predictions.
+    non_hold = [r for r in results if r["rec_signal"] != "HOLD" and r.get("oracle_signal") is not None]
+    high = [r for r in non_hold if r["rec_confidence"] >= 0.7]
+    low = [r for r in non_hold if r["rec_confidence"] < 0.7]
+
+    def _agree_rate(subset: list[dict]) -> float | None:
+        if not subset:
+            return None
+        return round(sum(1 for r in subset if r["rec_signal"] == r["oracle_signal"]) / len(subset), 4)
+
+    high_rate = _agree_rate(high)
+    low_rate = _agree_rate(low)
+    if high_rate is not None and low_rate is not None:
+        delta = round(high_rate - low_rate, 4)
+    else:
+        delta = None
+
+    confidence_calibration = {
+        "low_n": len(low),
+        "low_oracle_agree_rate": low_rate,
+        "high_n": len(high),
+        "high_oracle_agree_rate": high_rate,
+        "calibration_delta": delta,
+    }
+
     report = {
         "strategy": strategy_name,
         "n_cases": n,
@@ -351,6 +404,7 @@ def _build_report(
         "per_ticker": per_ticker,
         "confusion_vs_momentum": _confusion("momentum_signal"),
         "confusion_vs_oracle": _confusion("oracle_signal"),
+        "confidence_calibration": confidence_calibration,
     }
     report["scorecard"] = build_scorecard(report)
     return report
@@ -389,6 +443,23 @@ def _print_report(report: dict[str, Any]) -> None:
     print(f"\nSCORECARD  (failures out of {report['n_cases']} cases)")
     for bucket, count in report["scorecard"].items():
         print(f"  {bucket:<20}:  {count}")
+
+    cal = report.get("confidence_calibration", {})
+    if cal:
+        print("\nConfidence calibration:")
+        lo_n = cal.get("low_n", 0)
+        hi_n = cal.get("high_n", 0)
+        lo_rate = cal.get("low_oracle_agree_rate")
+        hi_rate = cal.get("high_oracle_agree_rate")
+        delta = cal.get("calibration_delta")
+        lo_str = f"{lo_rate:.0%}" if lo_rate is not None else "n/a"
+        hi_str = f"{hi_rate:.0%}" if hi_rate is not None else "n/a"
+        print(f"  Low  (<0.7):  n={lo_n}  oracle_agree= {lo_str}")
+        print(f"  High (>=0.7): n={hi_n}  oracle_agree= {hi_str}")
+        if delta is not None:
+            sign = "+" if delta >= 0 else ""
+            quality = "higher confidence -> more accurate" if delta >= 0 else "WARNING: confidence anti-correlated"
+            print(f"  Delta: {sign}{delta:.1%}pp  ({quality})")
     print()
 
 

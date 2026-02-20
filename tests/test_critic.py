@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import src.logging as run_logging
 from src.critic import critique_recommendation
+from src.recommend import MomentumStrategy
 from src.run_daily import run_daily
 
 
@@ -257,6 +258,117 @@ class TestRunDailyRecDir(unittest.TestCase):
                 self.assertIn("signal", saved)
 
 
+class TestMomentumConfidenceGranularity(unittest.TestCase):
+    """_compute_momentum_confidence produces varied, bounded scores."""
+
+    def setUp(self):
+        self.strategy = MomentumStrategy()
+
+    def test_strong_buy_higher_than_weak_buy(self):
+        strong = self.strategy.recommend({
+            "ret_5d": 0.10, "price_to_ma20": 0.08, "vol_20d": 0.15,
+        })
+        weak = self.strategy.recommend({
+            "ret_5d": 0.025, "price_to_ma20": 0.005, "vol_20d": 0.45,
+        })
+        self.assertEqual(strong["signal"], "BUY")
+        self.assertEqual(weak["signal"], "BUY")
+        self.assertGreater(strong["confidence"], weak["confidence"])
+
+    def test_hold_confidence_is_half(self):
+        rec = self.strategy.recommend({
+            "ret_5d": 0.001, "price_to_ma20": -0.001, "vol_20d": 0.20,
+        })
+        self.assertEqual(rec["signal"], "HOLD")
+        self.assertEqual(rec["confidence"], 0.5)
+
+    def test_confidence_range(self):
+        # Test many scenarios — all should be in [0.5, 0.95]
+        for ret in [-0.15, -0.05, -0.025, 0.025, 0.05, 0.15]:
+            for p2ma in [-0.10, -0.01, 0.01, 0.10]:
+                for vol in [0.05, 0.20, 0.50]:
+                    rec = self.strategy.recommend({
+                        "ret_5d": ret, "price_to_ma20": p2ma, "vol_20d": vol,
+                    })
+                    self.assertGreaterEqual(rec["confidence"], 0.5,
+                        f"ret={ret} p2ma={p2ma} vol={vol}")
+                    self.assertLessEqual(rec["confidence"], 0.95,
+                        f"ret={ret} p2ma={p2ma} vol={vol}")
+
+    def test_high_vol_reduces_confidence(self):
+        base = {"ret_5d": 0.05, "price_to_ma20": 0.03}
+        low_vol = self.strategy.recommend({**base, "vol_20d": 0.10})
+        high_vol = self.strategy.recommend({**base, "vol_20d": 0.55})
+        self.assertGreater(low_vol["confidence"], high_vol["confidence"])
+
+    def test_deterministic(self):
+        evidence = {"ret_5d": 0.04, "price_to_ma20": 0.02, "vol_20d": 0.25}
+        r1 = self.strategy.recommend(evidence)
+        r2 = self.strategy.recommend(evidence)
+        self.assertEqual(r1["confidence"], r2["confidence"])
+
+
+class TestConfidenceAnalysis(unittest.TestCase):
+    """confidence_analysis() bucketing logic."""
+
+    def test_basic_bucketing(self):
+        import pandas as pd
+        from src.backtest import confidence_analysis
+
+        trades = pd.DataFrame({
+            "confidence": [0.55, 0.60, 0.72, 0.85, 0.90],
+            "pnl_pct": [0.01, -0.01, 0.02, 0.03, -0.005],
+        })
+        ca = confidence_analysis(trades)
+        self.assertEqual(len(ca), 4)  # 4 default buckets
+        # First bucket [0.0,0.5) should be empty
+        self.assertEqual(ca.iloc[0]["n_trades"], 0)
+        # Second bucket [0.5,0.65) has 2 trades
+        self.assertEqual(ca.iloc[1]["n_trades"], 2)
+
+    def test_empty_trades(self):
+        import pandas as pd
+        from src.backtest import confidence_analysis
+
+        ca = confidence_analysis(pd.DataFrame())
+        self.assertTrue(ca.empty)
+
+    def test_missing_confidence_column(self):
+        import pandas as pd
+        from src.backtest import confidence_analysis
+
+        trades = pd.DataFrame({"pnl_pct": [0.01, -0.01]})
+        ca = confidence_analysis(trades)
+        self.assertTrue(ca.empty)
+
+
+class TestTradesAlwaysHaveConfidence(unittest.TestCase):
+    """Momentum backtest on synthetic data has a confidence column."""
+
+    def test_confidence_column_present(self):
+        import pandas as pd
+        from src.backtest import run_ticker_backtest
+
+        n = 80
+        dates = pd.bdate_range("2024-01-01", periods=n)
+        # Create a trend so we get BUY signals
+        prices = [100.0 + i * 0.5 for i in range(n)]
+        df = pd.DataFrame({
+            "Open": prices,
+            "High": [p + 1 for p in prices],
+            "Low": [p - 1 for p in prices],
+            "Close": prices,
+            "Volume": [1_000_000] * n,
+        }, index=dates)
+
+        trades = run_ticker_backtest("TEST", df, strategy_name="momentum")
+        if not trades.empty:
+            self.assertIn("confidence", trades.columns)
+            # All confidence values should be in [0.5, 0.95]
+            self.assertTrue((trades["confidence"] >= 0.5).all())
+            self.assertTrue((trades["confidence"] <= 0.95).all())
+
+
 class TestBacktestRecCache(unittest.TestCase):
     """run_ticker_backtest honours the rec_cache dict."""
 
@@ -311,6 +423,8 @@ class TestBacktestRecCache(unittest.TestCase):
         self.assertEqual(call_count["n"], 0)
         # All cached signals were BUY so we should have trades.
         self.assertFalse(trades.empty)
+        # Confidence column is always present.
+        self.assertIn("confidence", trades.columns)
 
 
 if __name__ == "__main__":

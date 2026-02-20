@@ -155,6 +155,7 @@ def run_ticker_backtest(
                 "entry_date": entry_date.strftime("%Y-%m-%d"),
                 "exit_date": exit_date.strftime("%Y-%m-%d"),
                 "signal": signal,
+                "confidence": round(rec["confidence"], 4),
                 "entry_price": round(entry_price, 4),
                 "exit_price": round(exit_price, 4),
                 "pnl_pct": round(pnl_pct, 6),
@@ -207,6 +208,53 @@ def _max_drawdown(pnl: pd.Series) -> float:
     peak = equity.cummax()
     dd = (equity - peak) / peak
     return float(dd.min())
+
+
+def confidence_analysis(
+    trades: pd.DataFrame,
+    buckets: list[tuple[float, float]] | None = None,
+) -> pd.DataFrame:
+    """Break down trade performance by confidence bucket.
+
+    Parameters
+    ----------
+    trades  : trades DataFrame (must have ``confidence`` and ``pnl_pct`` columns)
+    buckets : list of (lo, hi) pairs; default four buckets from 0 to 1
+
+    Returns
+    -------
+    DataFrame with columns: bucket, n_trades, win_rate, avg_pnl_pct, sharpe
+    """
+    if trades.empty or "confidence" not in trades.columns:
+        return pd.DataFrame(columns=["bucket", "n_trades", "win_rate", "avg_pnl_pct", "sharpe"])
+
+    if buckets is None:
+        buckets = [(0.0, 0.5), (0.5, 0.65), (0.65, 0.8), (0.8, 1.01)]
+
+    rows = []
+    for lo, hi in buckets:
+        mask = (trades["confidence"] >= lo) & (trades["confidence"] < hi)
+        subset = trades.loc[mask, "pnl_pct"]
+        n = len(subset)
+        if n == 0:
+            rows.append({"bucket": f"[{lo:.2f},{hi:.2f})", "n_trades": 0,
+                         "win_rate": None, "avg_pnl_pct": None, "sharpe": None})
+            continue
+        win_rate = float((subset > 0).sum() / n)
+        avg_pnl = float(subset.mean())
+        sharpe = (
+            float(subset.mean() / subset.std() * np.sqrt(252 / HOLD_DAYS))
+            if subset.std() > 0 else 0.0
+        )
+        rows.append({
+            "bucket": f"[{lo:.2f},{hi:.2f})",
+            "n_trades": n,
+            "win_rate": round(win_rate, 4),
+            "avg_pnl_pct": round(avg_pnl * 100, 4),
+            "sharpe": round(sharpe, 4),
+        })
+
+    return pd.DataFrame(rows)
 
 
 def run_backtest(

@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.backtest import run_backtest
+from src.backtest import run_backtest, confidence_analysis
 from src.logging import append_run_record
 
 
@@ -144,6 +144,32 @@ def main():
             if not t.empty:
                 agree_rate = t["critic_agree"].mean()
                 print(f"    {'critic_agree_rate':<25}: {agree_rate:.2%}")
+
+    # Confidence analysis
+    if not trades.empty and "confidence" in trades.columns:
+        print("\n=== CONFIDENCE ANALYSIS (aggregate) ===")
+        ca = confidence_analysis(trades)
+        for _, row in ca.iterrows():
+            wr = f"{row['win_rate']:.0%}" if row["win_rate"] is not None else "n/a"
+            ap = f"{row['avg_pnl_pct']:.4f}%" if row["avg_pnl_pct"] is not None else "n/a"
+            sh = f"{row['sharpe']:.4f}" if row["sharpe"] is not None else "n/a"
+            print(f"  {row['bucket']:<16}  n={row['n_trades']:>4}  win_rate={wr:>5}  avg_pnl={ap:>10}  sharpe={sh:>8}")
+
+        print("\n=== CONFIDENCE ANALYSIS (per-ticker) ===")
+        for ticker in TICKERS:
+            t = trades[trades["ticker"] == ticker]
+            if t.empty:
+                continue
+            print(f"\n  {ticker}")
+            ca_t = confidence_analysis(t)
+            for _, row in ca_t.iterrows():
+                wr = f"{row['win_rate']:.0%}" if row["win_rate"] is not None else "n/a"
+                ap = f"{row['avg_pnl_pct']:.4f}%" if row["avg_pnl_pct"] is not None else "n/a"
+                sh = f"{row['sharpe']:.4f}" if row["sharpe"] is not None else "n/a"
+                print(f"    {row['bucket']:<16}  n={row['n_trades']:>4}  win_rate={wr:>5}  avg_pnl={ap:>10}  sharpe={sh:>8}")
+
+        # Save aggregate confidence analysis
+        ca.to_csv(run_dir / "confidence_analysis.csv", index=False)
 
     version = _git_version()
     for ticker, m in summary["per_ticker"].items():

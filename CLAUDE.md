@@ -58,6 +58,15 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 - **SELL**: `ret_5d < -2%` AND `price < MA20`
 - **Vol filter**: HOLD if 20d annualised vol > 60%
 
+### Momentum confidence formula
+Non-HOLD signals get a continuous confidence in `[0.50, 0.95]` via `_compute_momentum_confidence()`:
+- **ret_strength** (wt 0.50): `min((|ret_5d| - threshold) / 0.10, 1.0)`
+- **ma_strength** (wt 0.30): `min(|price_to_ma20| / 0.05, 1.0)`
+- **vol_penalty** (wt 0.20): `1 - min(vol / vol_cap, 1.0)`
+- **Final**: `0.50 + raw * 0.45`
+
+HOLD signals always have `confidence = 0.5`.
+
 ## LLM strategy
 - Model: `claude-sonnet-4-6` (set in `LLMStrategy.__init__`)
 - Requires `ANTHROPIC_API_KEY` in environment (stored in `.env`)
@@ -105,6 +114,12 @@ Cache key format: `"<TICKER>/<YYYY-MM-DD>"` → recommendation dict.
 | TSLA   | 315    | 54.3%    | 1.09   | 1.51          |
 | GLD    | 214    | 56.1%    | 0.48   | 1.19          |
 | **All**| **895**| **52.2%**| **0.61**| **1.28**    |
+
+## Confidence tracking
+- `confidence` column is always present in `trades.csv` (both momentum and LLM)
+- `confidence_analysis.csv` is saved to every backtest run directory with per-bucket breakdown
+- Evals include `confidence_calibrated` grader and `overconfident_miss` scorecard bucket
+- Confidence calibration summary in eval report compares oracle agreement rates for high (>=0.7) vs low (<0.7) confidence predictions
 
 ## Dev workflow
 - After any code change, always run `.venv/bin/python -m pytest tests/ -v`

@@ -163,6 +163,7 @@ def run_daily(
             "run_type": "daily",
             "strategy": strategy_name,
             "signal": rec["signal"],
+            "confidence": rec.get("confidence", 0.5),
             "rationale": rec["rationale"][:200],
             "model": rec.get("model", ""),
             "input_tokens": rec.get("input_tokens", 0),

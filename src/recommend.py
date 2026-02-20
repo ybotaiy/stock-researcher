@@ -23,6 +23,32 @@ load_dotenv()
 SIGNAL_CHOICES = ("BUY", "SELL", "HOLD")
 
 
+def _compute_momentum_confidence(
+    ret5: float, threshold: float, p2ma20: float, vol: float | None, vol_cap: float,
+) -> float:
+    """Continuous confidence score in [0.50, 0.95] for non-HOLD momentum signals.
+
+    Components (weighted):
+      - ret_strength  (0.50): how far |ret_5d| exceeds the threshold
+      - ma_strength   (0.30): how far price is from MA20
+      - vol_penalty   (0.20): lower vol → higher confidence
+
+    Final = 0.50 + raw * 0.45  →  range [0.50, 0.95]
+    """
+    ret_strength = min(abs(ret5) - threshold, 0.10) / 0.10
+    ret_strength = max(ret_strength, 0.0)
+
+    ma_strength = min(abs(p2ma20) / 0.05, 1.0)
+
+    if vol is not None:
+        vol_penalty = 1.0 - min(vol / vol_cap, 1.0)
+    else:
+        vol_penalty = 0.5  # neutral when vol unavailable
+
+    raw = 0.50 * ret_strength + 0.30 * ma_strength + 0.20 * vol_penalty
+    return round(0.50 + raw * 0.45, 4)
+
+
 # ---------------------------------------------------------------------------
 # Baseline: momentum strategy
 # ---------------------------------------------------------------------------
@@ -82,7 +108,10 @@ class MomentumStrategy:
                 f"Mixed signals: 5d return {ret5:.2%}, price_to_ma20 {p2ma20:.2%}."
             )
 
-        confidence = 0.7 if signal in ("BUY", "SELL") else 0.5
+        if signal in ("BUY", "SELL"):
+            confidence = _compute_momentum_confidence(ret5, self.threshold, p2ma20, vol, self.vol_cap)
+        else:
+            confidence = 0.5
         return {"signal": signal, "confidence": confidence, "rationale": rationale, "strategy": "momentum"}
 
 

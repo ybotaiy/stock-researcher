@@ -32,7 +32,7 @@ class TestEvalsEndToEnd(unittest.TestCase):
     def test_scorecard_keys(self):
         self.assertEqual(
             set(self.report["scorecard"].keys()),
-            {"schema_fail", "out_of_range", "ungrounded_claim", "logic_conflict"},
+            {"schema_fail", "out_of_range", "ungrounded_claim", "logic_conflict", "overconfident_miss"},
         )
 
     def test_scorecard_zero_schema_fail(self):
@@ -43,6 +43,15 @@ class TestEvalsEndToEnd(unittest.TestCase):
 
     def test_per_ticker_present(self):
         self.assertEqual(set(self.report["per_ticker"].keys()), {"GOOGL", "TSLA", "GLD"})
+
+    def test_confidence_calibration_in_report(self):
+        self.assertIn("confidence_calibration", self.report)
+        cal = self.report["confidence_calibration"]
+        self.assertIn("low_n", cal)
+        self.assertIn("high_n", cal)
+        self.assertIn("low_oracle_agree_rate", cal)
+        self.assertIn("high_oracle_agree_rate", cal)
+        self.assertIn("calibration_delta", cal)
 
 
 if __name__ == "__main__":
