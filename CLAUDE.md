@@ -71,6 +71,33 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 - Artifacts: `critic_<TICKER>.json` saved alongside recommendation JSON in the run directory
 - Log columns added when critic is enabled: `critic_agree`, `confidence_before`, `confidence_after`, `stance_before`, `stance_after`, `critic_input_tokens`, `critic_output_tokens`, `critic_estimated_cost_usd`
 
+## Recommendation cache (skip primary LLM on critic reruns)
+
+**Backtest** — `rec_cache.json` is auto-saved to every LLM backtest run directory.
+Pass it back with `--rec-cache` to run the critic without re-calling the primary LLM:
+```bash
+# Step 1: generate recs (saves rec_cache.json automatically)
+.venv/bin/python -m src.run_backtest --strategy llm --skip-hold-prefilter \
+    --start 2025-10-01 --end 2025-12-31
+
+# Step 2: critic-only rerun — zero primary LLM calls
+.venv/bin/python -m src.run_backtest --strategy llm --critic --skip-hold-prefilter \
+    --rec-cache runs/backtest_llm_2025-10-01_2025-12-31_<ts>/rec_cache.json \
+    --start 2025-10-01 --end 2025-12-31
+```
+
+**Daily** — pass `--rec-dir` pointing to an existing daily run directory:
+```bash
+# Step 1: generate recs
+.venv/bin/python -m src.run_daily --strategy llm --date 2025-01-10
+
+# Step 2: critic-only rerun using saved recommendation_<TICKER>.json files
+.venv/bin/python -m src.run_daily --strategy llm --critic \
+    --rec-dir runs/daily_2025-01-10_<ts>/ --date 2025-01-10
+```
+
+Cache key format: `"<TICKER>/<YYYY-MM-DD>"` → recommendation dict.
+
 ## Backtest results (momentum, 2023-01-01 → 2025-12-31)
 | Ticker | Trades | Win rate | Sharpe | Profit factor |
 |--------|--------|----------|--------|---------------|
