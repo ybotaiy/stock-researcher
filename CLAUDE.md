@@ -1,3 +1,24 @@
+<!-- agent-context:begin -->
+## Personal KB Context
+Use the linked personal KB before planning or status updates.
+
+Read first:
+1. `.agent-context/profile/communication_style.md`
+2. `.agent-context/profile/decision_preferences.md`
+3. `.agent-context/profile/constraints.md`
+4. `.agent-context/profile/personal_context.md`
+5. `.agent-context/status/active_priorities.md`
+6. `.agent-context/status/weekly_status.md`
+7. `.agent-context/projects/current.md`
+
+Canonical project file: `agent-context/projects/stock-researcher.md`
+
+Rules:
+- Keep durable project facts, blockers, decisions, and next steps in the canonical KB.
+- If this repo changes project reality, update `.agent-context/projects/current.md` and the relevant KB status files.
+- Do not create duplicate personal project summaries in this repo.
+<!-- agent-context:end -->
+
 # Stock Researcher — Claude Code Project
 
 ## What this is
@@ -17,7 +38,7 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 |------|------|
 | `src/data.py` | `fetch_ohlcv(ticker, start, end)` — yfinance + CSV cache |
 | `src/features.py` | `compute_features(df, as_of)` — returns, vol, MAs, volume ratio |
-| `src/recommend.py` | `MomentumStrategy`, `LLMStrategy`, `build_evidence_pack()` |
+| `src/recommend.py` | `MomentumStrategy`, `LLMStrategy`, `ClaudeCodeStrategy`, `build_evidence_pack()` |
 | `src/critic.py` | `critique_recommendation()` — second LLM pass to review and possibly downgrade a signal |
 | `src/backtest.py` | `run_backtest()` — walk-forward, warmup window, prefilter support |
 | `src/run_daily.py` | Daily artifact generator (evidence_pack + recommendation JSON) |
@@ -51,6 +72,15 @@ A stock watchlist research agent for **GOOGL, TSLA, GLD** with:
 
 # Backtest — with critic enabled
 .venv/bin/python -m src.run_backtest --strategy momentum --critic --start 2025-01-01 --end 2025-03-31
+
+# Daily run (Claude Code CLI — no API key needed)
+.venv/bin/python -m src.run_daily --date 2025-01-10 --strategy claude-code
+
+# Daily run (Claude Code CLI + critic)
+.venv/bin/python -m src.run_daily --date 2025-01-10 --strategy claude-code --critic
+
+# Backtest — Claude Code CLI with momentum prefilter
+.venv/bin/python -m src.run_backtest --strategy claude-code --skip-hold-prefilter --start 2025-10-01 --end 2025-12-31
 ```
 
 ## Momentum strategy rules
@@ -71,6 +101,14 @@ HOLD signals always have `confidence = 0.5`.
 - Model: `claude-sonnet-4-6` (set in `LLMStrategy.__init__`)
 - Requires `ANTHROPIC_API_KEY` in environment (stored in `.env`)
 - Use `--skip-hold-prefilter` to cut API calls by ~47% and cost by ~$0.27 on the full 3-year run
+
+## Claude Code CLI strategy
+- Uses `claude -p` subprocess instead of the Anthropic Python SDK
+- **No `ANTHROPIC_API_KEY` needed** — uses Claude Code's own authentication
+- `--json-schema` flag enforces structured output; `--output-format json` provides cost metadata
+- Default model: `sonnet` (CLI alias); override with `--model`
+- Token counts not available (CLI doesn't expose breakdown); cost comes from `total_cost_usd` in wrapper
+- Performance note: subprocess overhead (~1-2s per call) makes this slower than direct API calls
 
 ## LLM critic (opt-in)
 - Enabled via `--critic` flag on both `run_daily` and `run_backtest`
